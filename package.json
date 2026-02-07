@@ -1,0 +1,19 @@
+{
+  "name": "ts-academy-group6_backend",
+  "version": "1.0.0",
+  "description": "Payroll management system",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ibabatunde/ts-academy-group6-backend.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ibabatunde/ts-academy-group6-backend/issues"
+  },
+  "homepage": "https://github.com/ibabatunde/ts-academy-group6-backend#readme"
+}
