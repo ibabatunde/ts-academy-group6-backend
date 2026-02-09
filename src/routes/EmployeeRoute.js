@@ -5,4 +5,7 @@ const employeeController = require('../controllers/EmployeeController');
 // POST /api/v1/employees/register
 router.post('/register', employeeController.createEmployee);
 
+// POST /api/v1/employees/login
+router.post('/login', employeeController.loginEmployee);
+
 module.exports = router;
