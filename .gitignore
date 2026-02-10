@@ -67,3 +67,5 @@ junit.xml
 
 # OS
 Thumbs.db
+
+properties.env
