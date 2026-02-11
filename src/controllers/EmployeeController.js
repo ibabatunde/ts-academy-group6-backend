@@ -1,8 +1,9 @@
 const Employee = require('../models/Employee');
+const PasswordToken = require('../models/PasswordToken');
 const generateAuthToken = require('../utils/generateAuthToken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto')
-const sendPasswordSetupEmail = require('../utils/mailer');
+const sendEmail = require('../utils/mailer');
 
 exports.createEmployee = async (req, res) => {
 
@@ -17,7 +18,7 @@ exports.createEmployee = async (req, res) => {
             return res.status(400).json({ message: 'Employee with this email already exists' });
         }
 
-        const newEmployee = new Employee({
+        const employee = await Employee.create({
             firstName,
             lastName,
             email,
@@ -28,30 +29,44 @@ exports.createEmployee = async (req, res) => {
             bankDetails
         });
 
-        const token = generateAuthToken(newEmployee);
-        const salt = await bcrypt.genSalt(10);
-        //const hashedToken = await bcrypt.hash(token, salt);
+        const token = generateAuthToken(employee);
+
         const hashedToken = crypto
             .createHash("sha256")
             .update(token)
             .digest("hex");
 
-        newEmployee.passwordSetupToken = hashedToken;
-        newEmployee.passwordSetupExpires = new Date(
-            Date.now() + 30 * 60 * 1000  //30 minutes
-        );
+        //Remove any existing passwordSetups for this employee
+        await PasswordToken.deleteMany({
+            employeeId: employee._id,
+        })
 
-        //this code block is effective when we have the 
-        //front-end url as we expect a link to be sent to the user upon registration
-        //For now, we should be able to test the setup-password endpoint
-        //on postman upon successful registration of a user
+        var userToken = new PasswordToken({
+            employeeId: employee._id,
+            passwordSetupToken : hashedToken,
+            passwordSetupExpires : new Date(
+                Date.now() + 30 * 60 * 1000  //30 minutes
+            )  
+        })       
+       
         const setupLink = `${process.env.FRONTEND_URL}/setup-password?token=${token}`
+        
+        const emailDetails = { 
+            subject: "Set up your password",
+            html:` <h2>Welcome, </h2>
+                    <p>Please click the link below to set up your password:</p>
 
-        await sendPasswordSetupEmail(email, setupLink);
+                    <a href="${setupLink}">${setupLink}</a>
 
-        await newEmployee.save();
+                    <p>This link expires in 30 minutes.</p>
 
-        const employeeData = newEmployee.toObject();
+                    <h3>Thank you</h3> `
+        };
+       
+        await sendEmail(emailDetails.subject, emailDetails.html, email);
+        await userToken.save();
+        
+        const employeeData = employee.toObject();
         delete employeeData.password;
 
         res.status(201).json({
@@ -93,7 +108,8 @@ exports.loginEmployee = async (req, res) => {
 
 exports.setupPassword = async (req, res) => {
     try {
-        const { token, password } = req.body;
+        const { token  } = req.query;
+        const { password} = req.body;
 
         if (!password) {
             return res.status(400).json({
@@ -114,27 +130,24 @@ exports.setupPassword = async (req, res) => {
             .update(token)
             .digest("hex");
 
-        const employee = await Employee.findOne({
+        const passwordToken = await PasswordToken.findOne({
             passwordSetupToken: hashedToken,
             passwordSetupExpires: { $gt: Date.now() }
-        })
+        }).populate("employeeId");
 
-        console.log(employee.password);
-        if (!employee) {
+        if (!passwordToken) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid or expired token"
             })
         }
 
-        employee.password = password     
-        //Clear reset fields
-        employee.passwordSetupExpires = undefined
-        employee.passwordSetupToken = undefined
+        const employee = passwordToken.employeeId;
+        employee.password = password            
 
         await employee.save();
 
-        console.log("After saving to db:", employee.password);
+        await passwordToken.deleteOne();
 
         res.status(200).json({ 
             success: true,

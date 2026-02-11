@@ -15,8 +15,6 @@ const employeeSchema = new mongoose.Schema({
     },
     isLeaveApproved: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
-    passwordSetupToken: String,
-    passwordSetupExpires: Date,
 }, { timestamps: true });
 
 employeeSchema.pre('save', async function (next) {
