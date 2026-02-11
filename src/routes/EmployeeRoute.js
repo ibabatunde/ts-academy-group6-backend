@@ -14,5 +14,6 @@ router.post(
 
 // POST /api/v1/employees/login
 router.post('/login', employeeController.loginEmployee);
+router.post('/setup-password', employeeController.setupPassword);
 
 module.exports = router;
