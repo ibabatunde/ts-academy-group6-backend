@@ -1,5 +1,6 @@
 const Employee = require('../models/Employee');
 const generateAuthToken = require('../utils/generateAuthToken');
+const sendMail = require('../utils/mailer');
 
 exports.createEmployee = async (req, res) => {
 
@@ -29,6 +30,12 @@ exports.createEmployee = async (req, res) => {
 
         const employeeData = newEmployee.toObject();
         delete employeeData.password;
+
+        await sendMail({
+            to: email,
+            subject: 'Welcome to the Payroll Management System',
+            text: `Hello ${firstName},\n\nYour employee account has been created successfully. You can now log in using the following credentials:\nEmail: ${email}\nPassword: ${password}\n\nBest regards,\nPayroll Management Team`
+        });
 
         res.status(201).json({
             message: "Employee created successfully",
