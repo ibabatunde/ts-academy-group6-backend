@@ -225,6 +225,43 @@ const updatePayroll = async (req, res) => {
         res.status(500).json({ message: 'Server error while updating payroll', error: error.message });
     }
 };
+
+updatePassword = async (req,res) => {
+    try{
+            const {email,oldPassword, NewPassword } = req.body;
+            if(!email || !oldPassword) {
+                return res.status(400).json({message: 'Email and OldPassword are required'});
+            }
+    const employee = await Employee.findOne ({email});
+        if(!employee) {
+            return res.status (400).json({message:'invalid email or passord'})
+        }
+
+        const isMatch = await employee.comparePassword (oldPassword);
+        if (!isMatch){
+            return res.status (400).json({message: 'invalid email or passsword'})
+        }
+    
+
+    //bcrypt password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(NewPassword, salt);
+
+    //update Password
+    employee.password = hashedPassword;
+
+    //save changes 
+    await employee.save();
+
+    //send a success response 
+    res.status(200) .json ({message: `Password update sucessfully`});
+    }
+    catch(error){
+        console.log(error)
+        res.status(500).json({messgae:`server error while updating password`, error: error.message});
+    }
+}
+
 module.exports = {
     createEmployee,
     loginEmployee,
@@ -235,5 +272,6 @@ module.exports = {
     createPayroll,
     updateEmployee,
     updatePayroll,
-    revertAttendance 
+    revertAttendance,
+    updatePassword
 };

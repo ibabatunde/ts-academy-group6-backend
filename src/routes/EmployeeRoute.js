@@ -7,6 +7,12 @@ const authorizeRoles = require('../middleware/authorizeRoles');
 /**
  * @swagger
  * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ *
  *   schemas:
  *     Employee:
  *       type: object
@@ -28,11 +34,12 @@ const authorizeRoles = require('../middleware/authorizeRoles');
  *           type: string
  *         email:
  *           type: string
+ *           format: email
  *         password:
  *           type: string
  *         role:
  *           type: string
- *           enum: ['Admin', 'Manager', 'Employee']
+ *           enum: [Admin, Manager, Employee]
  *         department:
  *           type: string
  *         baseSalary:
@@ -44,6 +51,7 @@ const authorizeRoles = require('../middleware/authorizeRoles');
  *               type: string
  *             bankName:
  *               type: string
+ *
  *     Payroll:
  *       type: object
  *       required:
@@ -82,6 +90,8 @@ const authorizeRoles = require('../middleware/authorizeRoles');
  *   post:
  *     summary: Register a new employee
  *     tags: [Employees]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -113,12 +123,11 @@ router.post(
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
- *               - password
+ *             required: [email, password]
  *             properties:
  *               email:
  *                 type: string
+ *                 format: email
  *               password:
  *                 type: string
  *     responses:
@@ -131,10 +140,50 @@ router.post('/login', employeeController.loginEmployee);
 
 /**
  * @swagger
+ * /api/v1/employees/update-password:
+ *   put:
+ *     summary: Update employee password
+ *     tags: [Employees]
+ *     security:
+ *       - bearerAuth: []
+ *     description: Update password using old password verification
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, oldPassword, newPassword]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               oldPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password updated successfully
+ *       400:
+ *         description: Invalid email or password
+ *       500:
+ *         description: Server error
+ */
+router.put(
+  '/update-password',
+  authenticate,
+  employeeController.updatePassword
+);
+
+/**
+ * @swagger
  * /api/v1/employees:
  *   get:
  *     summary: Get all employees
  *     tags: [Employees]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of employees
@@ -152,13 +201,15 @@ router.get(
  *   get:
  *     summary: Get a single employee
  *     tags: [Employees]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         description: Employee ID
  *         schema:
  *           type: string
+ *         description: Employee ID
  *     responses:
  *       200:
  *         description: Employee details
@@ -178,13 +229,15 @@ router.get(
  *   put:
  *     summary: Update an employee
  *     tags: [Employees]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         description: Employee ID
  *         schema:
  *           type: string
+ *         description: Employee ID
  *     requestBody:
  *       required: true
  *       content:
@@ -206,16 +259,18 @@ router.put(
 
 /**
  * @swagger
- * /api/v1/employees/payroll:
+ * /api/v1/employees/payroll/all:
  *   get:
  *     summary: Get all payrolls
  *     tags: [Payroll]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of payrolls
  */
 router.get(
-  '/payroll',
+  '/payroll/all',
   authenticate,
   authorizeRoles('Admin', 'Manager'),
   employeeController.getPayrolls
@@ -227,13 +282,15 @@ router.get(
  *   get:
  *     summary: Get a single payroll
  *     tags: [Payroll]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         description: Payroll ID
  *         schema:
  *           type: string
+ *         description: Payroll ID
  *     responses:
  *       200:
  *         description: Payroll details
@@ -253,13 +310,15 @@ router.get(
  *   put:
  *     summary: Update a payroll record
  *     tags: [Payroll]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         description: Payroll ID
  *         schema:
  *           type: string
+ *         description: Payroll ID
  *     requestBody:
  *       required: true
  *       content:
@@ -281,10 +340,10 @@ router.put(
 
 /**
  * @swagger
- * /payrolls/{payrollId}/attendance/{logId}:
+ * /api/v1/employees/payrolls/{payrollId}/attendance/{logId}:
  *   delete:
- *     summary: "Admin only: revert a single attendance log entry"
- *     tags: [Payrolls]
+ *     summary: Admin only - revert a single attendance log entry
+ *     tags: [Payroll]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -293,40 +352,26 @@ router.put(
  *         required: true
  *         schema:
  *           type: string
- *         description: ID of the payroll to modify
- *         example: "64f1a2b3c4d5e6f7a8b9c0d1"
  *       - in: path
  *         name: logId
  *         required: true
  *         schema:
  *           type: string
- *         description: ID of the specific attendance log entry to remove
- *         example: "64f1a2b3c4d5e6f7a8b9c0d3"
  *     responses:
  *       200:
- *         description: Attendance entry reverted and netPay adjusted
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Attendance entry reverted successfully"
- *                 payroll:
- *                   $ref: '#/components/schemas/Payroll'
+ *         description: Attendance entry reverted successfully
  *       400:
- *         description: Payroll is already marked as Paid — revert blocked
+ *         description: Payroll already paid
  *       404:
- *         description: Payroll or attendance log entry not found
+ *         description: Payroll or log not found
  *       500:
  *         description: Server error
  */
 router.delete(
-    '/payrolls/:payrollId/attendance/:logId',
-    authenticate,
-    authorizeRoles('Admin', 'Manager'),
-    employeeController.revertAttendance
+  '/payrolls/:payrollId/attendance/:logId',
+  authenticate,
+  authorizeRoles('Admin', 'Manager'),
+  employeeController.revertAttendance
 );
 
 module.exports = router;
