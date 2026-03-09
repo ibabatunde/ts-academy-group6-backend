@@ -279,4 +279,54 @@ router.put(
   employeeController.updatePayroll
 );
 
+/**
+ * @swagger
+ * /payrolls/{payrollId}/attendance/{logId}:
+ *   delete:
+ *     summary: "Admin only: revert a single attendance log entry"
+ *     tags: [Payrolls]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: payrollId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the payroll to modify
+ *         example: "64f1a2b3c4d5e6f7a8b9c0d1"
+ *       - in: path
+ *         name: logId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the specific attendance log entry to remove
+ *         example: "64f1a2b3c4d5e6f7a8b9c0d3"
+ *     responses:
+ *       200:
+ *         description: Attendance entry reverted and netPay adjusted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Attendance entry reverted successfully"
+ *                 payroll:
+ *                   $ref: '#/components/schemas/Payroll'
+ *       400:
+ *         description: Payroll is already marked as Paid — revert blocked
+ *       404:
+ *         description: Payroll or attendance log entry not found
+ *       500:
+ *         description: Server error
+ */
+router.delete(
+    '/payrolls/:payrollId/attendance/:logId',
+    authenticate,
+    authorizeRoles('Admin', 'Manager'),
+    employeeController.revertAttendance
+);
+
 module.exports = router;

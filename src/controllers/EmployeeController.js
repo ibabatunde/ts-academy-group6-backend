@@ -53,27 +53,103 @@ const createEmployee = async (req, res) => {
 const loginEmployee = async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (!email || !password) {
+        if (!email || !password)
             return res.status(400).json({ message: 'Email and password are required' });
-        }
 
         const employee = await Employee.findOne({ email });
-        if (!employee) {
+        if (!employee)
             return res.status(400).json({ message: 'Invalid email or password' });
-        }
 
         const isMatch = await employee.comparePassword(password);
-        if (!isMatch) {
+        if (!isMatch)
             return res.status(400).json({ message: 'Invalid email or password' });
-        }
 
         const token = generateAuthToken(employee);
 
-        res.status(200).json({ message: 'Login successful', token });
+    
+        const now       = new Date();
+        const todayStr  = now.toDateString(); 
+
+        const alreadyLoggedInToday =
+            employee.lastLogin && employee.lastLogin.toDateString() === todayStr;
+
+        if (!alreadyLoggedInToday) {
+            const currentMonth = now.toLocaleString('default', { month: 'long' });
+            const currentYear  = now.getFullYear();
+            const dailyPay     = parseFloat((employee.baseSalary / 30).toFixed(2));
+
+            const logEntry = { date: now, increment: dailyPay };
+
+            const existingPayroll = await Payroll.findOne({
+                employeeId: employee._id,
+                month:      currentMonth,
+                year:       currentYear
+            });
+
+            if (existingPayroll) {
+                existingPayroll.netPay = parseFloat(
+                    ((existingPayroll.netPay || 0) + dailyPay).toFixed(2)
+                );
+                existingPayroll.attendanceLogs.push(logEntry);
+                await existingPayroll.save();
+            } else {
+                await Payroll.create({
+                    employeeId:     employee._id,
+                    month:          currentMonth,
+                    year:           currentYear,
+                    netPay:         dailyPay,
+                    attendanceLogs: [logEntry],
+                    status:         'Pending',
+                    processedDate:  now
+                });
+            }
+
+            await Employee.findByIdAndUpdate(employee._id, { lastLogin: now });
+        }
+
+        res.status(200).json({
+            message: alreadyLoggedInToday
+                ? 'Login successful (attendance already recorded today)'
+                : 'Login successful',
+            token
+        });
     } catch (error) {
         res.status(500).json({ message: 'Server error while logging in', error: error.message });
     }
-}
+};
+
+
+const revertAttendance = async (req, res) => {
+    try {
+        const { payrollId, logId } = req.params;
+
+        const payroll = await Payroll.findById(payrollId);
+        if (!payroll)
+            return res.status(404).json({ message: 'Payroll not found' });
+
+        if (payroll.status === 'Paid')
+            return res.status(400).json({ message: 'Cannot revert a payroll that has already been paid' });
+
+        const logEntry = payroll.attendanceLogs.id(logId);
+        if (!logEntry)
+            return res.status(404).json({ message: 'Attendance log entry not found' });
+
+        payroll.netPay = parseFloat(
+            Math.max(0, payroll.netPay - logEntry.increment).toFixed(2)
+        );
+        logEntry.deleteOne(); 
+
+        await payroll.save();
+
+        res.status(200).json({
+            message:  'Attendance entry reverted successfully',
+            payroll
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error while reverting attendance', error: error.message });
+    }
+};
+
 const getEmployee = async (req, res) => {
     try {
         const {id} = req.params;
@@ -158,5 +234,6 @@ module.exports = {
     getPayrolls,
     createPayroll,
     updateEmployee,
-    updatePayroll
+    updatePayroll,
+    revertAttendance 
 };
