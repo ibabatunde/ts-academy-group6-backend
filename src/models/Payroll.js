@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const attendanceLogSchema = new mongoose.Schema({
-    date:      { type: Date,   required: true },   // exact timestamp of login
-    increment: { type: Number, required: true }    // amount added to netPay
-}, { _id: true });                                  // keep _id so we can target a single log
+    date:      { type: Date,   required: true },   
+    increment: { type: Number, required: true }    
+}, { _id: true });                                 
 
 const payrollSchema = new mongoose.Schema({
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee', required: true },
