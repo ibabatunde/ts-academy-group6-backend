@@ -14,7 +14,8 @@ const employeeSchema = new mongoose.Schema({
         bankName: String
     },
     isLeaveApproved: { type: Boolean, default: false },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    lastLogin: { type: Date,    default: null }
 }, { timestamps: true });
 
 employeeSchema.pre('save', async function (next) {
