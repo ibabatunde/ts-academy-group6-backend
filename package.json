@@ -27,7 +27,7 @@
     "mailtrap": "^4.4.0",
     "mongodb": "^7.1.0",
     "mongoose": "^9.1.6",
-    "nodemailer": "^7.0.13"
+    "nodemailer": "^7.0.13",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },
